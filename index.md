@@ -13,7 +13,9 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 **Dataset**: NASA Exoplanet Archive (PSCompPars) - 6,107 exoplanetas confirmados  
 **Objetivo**: Identificar los determinantes físicos de la temperatura planetaria y priorizar candidatos para búsqueda de vida extraterrestre.
 
-## Recursos
+| Dataset |[NASA_exoplanets](PSCompPars_2026.02.16_14.28.02.csv) |
+|---|---|
+| **Notebook** | [.ipynb](Tarea_2_IA_Regresion_lineal_y_multiple.ipynb) |
 
 ---
 
@@ -59,7 +61,7 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 ---
 
 ## Procedimiento
----
+[Contexto de los datos](contexto.md)
 
 ## Referencias
 
