@@ -15,7 +15,7 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 
 | Dataset |[NASA_exoplanets](PSCompPars_2026.02.16_14.28.02.csv) |
 |---|---|
-| **Notebook** | [.ipynb](Tarea_2_IA_Regresion_lineal_y_multiple.ipynb) |
+| **Notebook** | [.ipynb](PP1_IA.ipynb) |
 
 ---
 
