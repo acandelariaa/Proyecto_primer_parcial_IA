@@ -420,3 +420,122 @@ pl_orbsmax     0.066231
 pl_orbeccen    0.051549
 
 ```
+
+
+Increible matriz, cierto?, bueno, de aqui podemos ver varias cosas muy interesantes, podemos ver que al parecer las varibles que etan mas relacionadas con pl_eqt son:
+-  pl_insol, muy logico ya que la insolacion esta estrechamente relacionada con la temperatura
+- st_mass, tiene coherencia, ya que la masa de la estrella puede decir mucho de su efecto en los planetas
+- st_rad, tiene sentido que el radio de la estrella sea influyente
+- st_logg, valor alto absoluto, pero es negativo, podriamos quitarla
+- st_teff, temperatura efectiva de la estrella, obviamente esta relacionada
+
+De esto podemos ver ciertas cosas, podriamos eliminar stellar mass ya que esta relacionada con el radio, su informacion de cierta manera estaria capturada ahi. `st_logg`, realmente la relacion es negativa fuerte, podriamos quitarla sin problema. `sy_num`, al parecer el numero de estrellas no esta relacionado con la temperatura y en general no tiene relacion significativa con ninguna.
+
+Ultima cosa: algo extraño es que `pl_orbsmax` no este relacionada con la temperatura, podria deberse a su relación con `pl_insol`, una opcion tambien podria ser quitarla.
+
+RESUMEN:
+
+Conservar: `pl_insol`, `st_teff` y `st_rad`. Las demas las eliminamos y creamos un dataframe con solo las variables de interes.
+
+
+
+### Crear DF con las variables de interes
+
+
+>Python code
+
+
+
+```python
+# crear dataframe con las variables de interes
+vars_modelo = ["pl_eqt", "pl_insol", "st_teff", "st_rad"]
+df_model = df_clean[vars_modelo].copy()
+
+```
+Ya que tenemos esas variables de interes, chequemos outliers y valors nulos dentro de ese dataframe que acabamos de crear
+
+
+```python
+ivars_modelo = ["pl_eqt", "pl_insol", "st_teff", "st_rad"]
+df_model = df_clean[vars_modelo].copy()
+
+# ── Calcular nulos y outliers ─────────────────────────────────────────────────
+nulos = df_model.isnull().mean() * 100
+
+Q1 = df_model.quantile(0.25)
+Q3 = df_model.quantile(0.75)
+IQR = Q3 - Q1
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+outliers = {}
+for col in df_model.columns:
+    mask = (df_model[col] < lower[col]) | (df_model[col] > upper[col])
+    outliers[col] = mask.sum() / df_model[col].notna().sum() * 100
+outliers = pd.Series(outliers)
+
+# ── Figura con dos subplots ───────────────────────────────────────────────────
+fig, axes = plt.subplots(1, 2, figsize=(14, 4))
+fig.patch.set_facecolor("#0b0e1a")
+
+def get_color_nulos(pct):
+    if pct >= 50: return "#fc8181"
+    elif pct >= 20: return "#f6ad55"
+    else: return "#68d391"
+
+def get_color_outliers(pct):
+    if pct >= 10: return "#fc8181"
+    elif pct >= 5: return "#f6ad55"
+    else: return "#68d391"
+
+for ax, series, title, color_fn, refs, ref_label in [
+    (axes[0], nulos,    "% Valores Nulos",   get_color_nulos,    [(20, "20%"), (50, "50%")], "nulos"),
+    (axes[1], outliers, "% Outliers (Tukey)", get_color_outliers, [(5, "5%"), (10, "10%")],  "outliers"),
+]:
+    ax.set_facecolor("#111628")
+    colors = [color_fn(p) for p in series.values]
+    bars = ax.barh(series.index, series.values, color=colors, height=0.5, edgecolor="none")
+
+    for bar, val in zip(bars, series.values):
+        ax.text(val + 0.3, bar.get_y() + bar.get_height() / 2,
+                f"{val:.1f}%", va="center", ha="left",
+                fontsize=9, color="#e2e8f0", fontfamily="monospace")
+
+    for xline, label in refs:
+        ax.axvline(xline, color="#4fd1c5", linestyle="--", linewidth=0.8, alpha=0.6)
+        ax.text(xline + 0.2, len(series) - 0.1, label,
+                color="#4fd1c5", fontsize=8, va="top", fontfamily="monospace")
+
+    ax.set_xlim(0, max(series.values) * 1.3 + 5)
+    ax.set_title(title, color="#e2e8f0", fontsize=11, fontweight="bold", pad=10)
+    ax.tick_params(axis="x", colors="#a0aec0", labelsize=8)
+    ax.tick_params(axis="y", colors="#e2e8f0", labelsize=9)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.grid(axis="x", color="#1e2540", linewidth=0.6)
+    ax.xaxis.tick_top()
+    ax.xaxis.set_label_position("top")
+
+# Leyendas
+for ax, color_fn, labels in [
+    (axes[0], get_color_nulos,    ["< 20%", "20–50%", "> 50%"]),
+    (axes[1], get_color_outliers, ["< 5%",  "5–10%",  "> 10%"]),
+]:
+    patches = [
+        mpatches.Patch(color="#68d391", label=labels[0]),
+        mpatches.Patch(color="#f6ad55", label=labels[1]),
+        mpatches.Patch(color="#fc8181", label=labels[2]),
+    ]
+    ax.legend(handles=patches, loc="lower right", framealpha=0.2,
+              labelcolor="#e2e8f0", fontsize=8, facecolor="#111628")
+
+fig.suptitle("Estado de df_model — Nulos y Outliers", color="#e2e8f0",
+             fontsize=13, fontweight="bold", y=1.03)
+
+plt.tight_layout()
+plt.savefig("estado_df_model.png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+plt.show()
+
+```
+
+>Output
+
