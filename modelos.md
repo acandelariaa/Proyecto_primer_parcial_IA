@@ -466,3 +466,322 @@ plt.show()
 >Output
 
 ![prediccion2](prediccion2.png)
+
+
+
+
+Aqui estamos graficando los valores reales vs los predichos por el modelo polinomial + lasso, a los cuales vemos que se comporta bastane bien, vemos que los datos dentro de la temperatura de interes, son bastante buenos, sin embargo podemos ver que la la temperatura en aumento, la variabilidad de los datos va aumentando, teniendo problemas para predecir aproximadamente despues de los 2000 K.
+
+Probemos predecir los datos de algunos planetas para ver que tan lejos estamos en comparación a los datos reales.
+
+
+
+
+>PythonCode
+
+
+
+```python
+import pandas as pd
+
+# ── Predicciones sobre todo el dataset ───────────────────────────────────────
+X_all = df_lasso.drop(columns="pl_eqt")
+y_all = df_lasso["pl_eqt"]
+
+y_pred_all = pipeline.predict(X_all)
+
+# ── Construir tabla con nombres desde df_clean ────────────────────────────────
+df_habitables = df_clean.loc[df_lasso.index, ["pl_name", "hostname"]].copy()
+df_habitables["pl_eqt_real"]     = y_all.values
+df_habitables["pl_eqt_predicho"] = y_pred_all
+df_habitables["diff_tierra"]     = (df_habitables["pl_eqt_real"] - 255).abs()
+
+# ── Filtrar zona habitable térmica ────────────────────────────────────────────
+rango_min = 200
+rango_max = 320
+
+habitables = df_habitables[
+    df_habitables["pl_eqt_real"].between(rango_min, rango_max)
+].sort_values("diff_tierra")
+
+print(f"Planetas en zona habitable térmica ({rango_min}–{rango_max} K): {len(habitables)}")
+print(f"\nTop 20 más cercanos a 255 K (T⊕):")
+print(habitables[["pl_name", "hostname", "pl_eqt_real", "pl_eqt_predicho", "diff_tierra"]]
+      .head(20).to_string(index=False))
+```
+
+
+>Output
+
+
+
+
+```text
+Planetas en zona habitable térmica (200–320 K): 159
+
+Top 20 más cercanos a 255 K (T⊕):
+         pl_name      hostname  pl_eqt_real  pl_eqt_predicho  diff_tierra
+      HAT-P-56 b      HAT-P-56       255.00       342.457827         0.00
+    Kepler-304 d    Kepler-304       254.65       324.259586         0.35
+    Kepler-369 c    Kepler-369       256.00       318.764889         1.00
+         K2-45 b         K2-45       253.80       315.411857         1.20
+        GJ 849 c        GJ 849       253.08       909.474293         1.92
+   Kepler-1640 b   Kepler-1640       253.00       332.108176         2.00
+     Kepler-23 b     Kepler-23       258.00       324.266352         3.00
+Kepler-1660 AB b Kepler-1660 A       251.00       317.618997         4.00
+        GJ 581 c        GJ 581       259.40       319.906554         4.40
+    Kepler-764 b    Kepler-764       250.10       316.839904         4.90
+     Kepler-24 e     Kepler-24       260.00       329.710358         5.00
+         K2-30 b         K2-30       260.00       321.386641         5.00
+     Kepler-60 c     Kepler-60       249.70       316.592225         5.30
+      HAT-P-37 b      HAT-P-37       261.00       320.524528         6.00
+    Kepler-566 b    Kepler-566       249.00       323.612562         6.00
+    Kepler-328 b    Kepler-328       249.00       324.069246         6.00
+        K2-352 c        K2-352       248.00       327.704736         7.00
+     HIP 75092 b     HIP 75092       248.00       323.470767         7.00
+    Kepler-714 b    Kepler-714       247.00       316.997573         8.00
+      HD 18438 b      HD 18438       264.00       366.416327         9.00
+```
+
+
+
+
+Bien, parece que no estamos tan mal, en comparación con el primer modelo, este se comporta bastante bien, de modo que seria un buen candidato como modelo predictor de `pl_eqt`.
+
+### Puntos importantes
+
+- Si nuestro objetivo es predecir, este modelo es muy bueno, sin embargo, perdimos interpretabilidad, ya que al ser un modelo ponlinomial, tenemos algun termino con exponente 'n', de modo que al interpretar los datos, eso no nos dice mucho realmente.
+
+- Si queremos predicción, Polinimio + lasso, es una excelente opcion.
+
+- Si quisieramos interpretar los datos, el modelo de regresión lineal multiple nos permitira ver el efecto de cada variable con respecto a la salida.
+
+
+
+## Modelo de inferencia
+
+En este apartado vamos a crear un modelo enfocado en la **inferencia estadística**, no en la predicción. Esto significa que nuestro objetivo principal no es maximizar el R² (capacidad predictiva), sino **entender el comportamiento y las relaciones entre las variables** en nuestros datos.
+
+Para lograr esto, nos enfocaremos en analizar los **p-values** de cada variable, lo que nos permitirá identificar cuáles tienen un efecto estadísticamente significativo.
+
+Ahora bien, si no nos enfocamos en la R², ¿deberíamos entonces evaluar todas las variables disponibles? La respuesta es: sí, pero de manera estructurada.
+
+Para ello, utilizaremos el método de **selección hacia atrás (backward elimination)**. Este proceso consiste en:
+
+1. Comenzar con todas las variables candidatas
+2. Ajustar el modelo y evaluar los p-values
+3. Eliminar la variable con el p-value más alto (menos significativa)
+4. Repetir el proceso hasta que todas las variables restantes tengan un **p-value < 0.05** (nivel de confianza del 95%)
+
+De este modo, en cada iteración podremos observar qué variable se descarta y por qué, hasta llegar a un modelo parsimonioso con solo variables significativas.
+
+Como punto de partida, utilizaremos las variables del dataset original (antes de crear los modelos de interacción), lo que nos servirá como referencia para las iteraciones.
+
+
+
+
+>PythonCode
+
+
+
+```text
+
+# ── Variables numéricas relevantes como punto de partida ─────────────────────
+excluir = ["pl_eqt", "ra", "dec", "sy_snum", "sy_pnum", 
+           "pl_controv_flag", "ttv_flag", "disc_year"]
+
+df_inf = df_clean.select_dtypes(include="number").drop(
+    columns=[c for c in excluir if c in df_clean.columns]
+)
+
+# Agregar variable objetivo
+df_inf["pl_eqt"] = df_clean["pl_eqt"]
+
+# Eliminar filas donde pl_eqt es nulo
+df_inf = df_inf.dropna(subset=["pl_eqt"])
+
+# Imputar nulos restantes con KNN
+from sklearn.impute import KNNImputer
+df_inf = pd.DataFrame(
+    KNNImputer(n_neighbors=5).fit_transform(df_inf),
+    columns=df_inf.columns
+)
+
+print(f"Shape: {df_inf.shape}")
+print(f"Variables disponibles: {df_inf.shape[1] - 1}")
+```
+
+
+X_inf = df_inf.drop(columns="pl_eqt")
+y_inf = df_inf["pl_eqt"]
+
+def backward_elimination(X, y, umbral=0.05):
+    variables = list(X.columns)
+    iteracion = 1
+
+    while True:
+        X_sm = sm.add_constant(pd.DataFrame(X_inf[variables]))
+        modelo = sm.OLS(y, X_sm).fit()
+
+        pvalues = modelo.pvalues.drop("const")
+        max_pval = pvalues.max()
+        var_eliminar = pvalues.idxmax()
+
+        print(f"Iteración {iteracion:02d} | Variables: {len(variables):02d} | "
+              f"Peor variable: {var_eliminar:25s} | p-value: {max_pval:.4f}")
+
+        if max_pval > umbral:
+            variables.remove(var_eliminar)
+            iteracion += 1
+        else:
+            print(f"\n── Condición de paro alcanzada: todos los p-values ≤ {umbral} ──")
+            break
+
+    return modelo, variables
+
+modelo_inf, vars_finales = backward_elimination(X_inf, y_inf)
+
+print(f"\nVariables finales seleccionadas ({len(vars_finales)}):")
+for v in vars_finales:
+    print(f"  - {v}")
+
+print("\n")
+print(modelo_inf.summary())
+
+>Output
+
+
+
+
+```text
+Shape: (4566, 60)
+Variables disponibles: 59
+
+
+
+Iteración 01 | Variables: 59 | Peor variable: sy_kmagerr1               | p-value: 0.9402
+Iteración 02 | Variables: 58 | Peor variable: pl_radjerr2               | p-value: 0.8481
+Iteración 03 | Variables: 57 | Peor variable: st_raderr2                | p-value: 0.8215
+Iteración 04 | Variables: 56 | Peor variable: pl_bmasse                 | p-value: 0.8153
+Iteración 05 | Variables: 55 | Peor variable: st_masserr2               | p-value: 0.7400
+Iteración 06 | Variables: 54 | Peor variable: st_rad                    | p-value: 0.7275
+Iteración 07 | Variables: 53 | Peor variable: pl_radelim                | p-value: 0.6859
+Iteración 08 | Variables: 52 | Peor variable: pl_radjlim                | p-value: 0.6859
+Iteración 09 | Variables: 51 | Peor variable: sy_disterr2               | p-value: 0.6780
+Iteración 10 | Variables: 50 | Peor variable: st_meterr2                | p-value: 0.6566
+Iteración 11 | Variables: 49 | Peor variable: sy_vmagerr1               | p-value: 0.4898
+Iteración 12 | Variables: 48 | Peor variable: sy_vmag                   | p-value: 0.5295
+Iteración 13 | Variables: 47 | Peor variable: st_loggerr2               | p-value: 0.3940
+Iteración 14 | Variables: 46 | Peor variable: st_mass                   | p-value: 0.3197
+Iteración 15 | Variables: 45 | Peor variable: st_logglim                | p-value: 0.2800
+Iteración 16 | Variables: 44 | Peor variable: sy_kmag                   | p-value: 0.2626
+Iteración 17 | Variables: 43 | Peor variable: sy_gaiamagerr2            | p-value: 0.1998
+Iteración 18 | Variables: 42 | Peor variable: sy_gaiamagerr1            | p-value: 0.1998
+Iteración 19 | Variables: 41 | Peor variable: st_tefflim                | p-value: 0.8263
+Iteración 20 | Variables: 40 | Peor variable: pl_radjerr1               | p-value: 0.1523
+Iteración 21 | Variables: 39 | Peor variable: st_radlim                 | p-value: 0.2584
+Iteración 22 | Variables: 38 | Peor variable: st_masslim                | p-value: 0.2573
+Iteración 23 | Variables: 37 | Peor variable: pl_orbsmaxlim             | p-value: 0.2579
+Iteración 24 | Variables: 36 | Peor variable: pl_radj                   | p-value: 0.2563
+Iteración 25 | Variables: 35 | Peor variable: pl_insollim               | p-value: 0.5123
+Iteración 26 | Variables: 34 | Peor variable: pl_radeerr2               | p-value: 0.1091
+Iteración 27 | Variables: 33 | Peor variable: pl_radeerr1               | p-value: 0.4610
+Iteración 28 | Variables: 32 | Peor variable: sy_vmagerr2               | p-value: 0.0659
+Iteración 29 | Variables: 31 | Peor variable: sy_gaiamag                | p-value: 0.0754
+Iteración 30 | Variables: 30 | Peor variable: sy_kmagerr2               | p-value: 0.0456
+
+── Condición de paro alcanzada: todos los p-values ≤ 0.05 ──
+
+Variables finales seleccionadas (30):
+  - pl_orbper
+  - pl_orbpererr1
+  - pl_orbpererr2
+  - pl_orbperlim
+  - pl_orbsmax
+  - pl_orbsmaxerr1
+  - pl_orbsmaxerr2
+  - pl_rade
+  - pl_bmasselim
+  - pl_bmassj
+  - pl_bmassjlim
+  - pl_orbeccen
+  - pl_orbeccenlim
+  - pl_insol
+  - pl_insolerr1
+  - pl_insolerr2
+  - pl_eqtlim
+  - st_teff
+  - st_tefferr1
+  - st_tefferr2
+  - st_raderr1
+  - st_masserr1
+  - st_met
+  - st_meterr1
+  - st_metlim
+  - st_logg
+  - st_loggerr1
+  - sy_dist
+  - sy_disterr1
+  - sy_kmagerr2
+
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.551
+Model:                            OLS   Adj. R-squared:                  0.548
+Method:                 Least Squares   F-statistic:                     192.0
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        10:45:12   Log-Likelihood:                -32687.
+No. Observations:                4566   AIC:                         6.543e+04
+Df Residuals:                    4536   BIC:                         6.563e+04
+Df Model:                          29                                         
+Covariance Type:            nonrobust                                         
+==================================================================================
+                     coef    std err          t      P>|t|      [0.025      0.975]
+----------------------------------------------------------------------------------
+const           2088.8004    161.646     12.922      0.000    1771.895    2405.706
+pl_orbper          0.0001   4.29e-05      2.493      0.013    2.28e-05       0.000
+pl_orbpererr1     -0.0004   9.43e-05     -4.005      0.000      -0.001      -0.000
+pl_orbpererr2     -0.0007      0.000     -4.378      0.000      -0.001      -0.000
+pl_orbperlim     549.4946    221.478      2.481      0.013     115.289     983.700
+pl_orbsmax         0.0826      0.035      2.393      0.017       0.015       0.150
+pl_orbsmaxerr1    21.2553      9.965      2.133      0.033       1.719      40.791
+pl_orbsmaxerr2    20.6138      9.760      2.112      0.035       1.479      39.749
+pl_rade           13.2658      1.213     10.936      0.000      10.888      15.644
+pl_bmasselim     -25.6079     11.618     -2.204      0.028     -48.385      -2.831
+pl_bmassj         14.5494      2.447      5.945      0.000       9.751      19.347
+pl_bmassjlim     -25.6079     11.618     -2.204      0.028     -48.385      -2.831
+pl_orbeccen     -718.7907     49.589    -14.495      0.000    -816.010    -621.572
+pl_orbeccenlim   225.5030     21.101     10.687      0.000     184.134     266.872
+pl_insol           0.1977      0.007     30.337      0.000       0.185       0.210
+pl_insolerr1       0.7615      0.100      7.631      0.000       0.566       0.957
+pl_insolerr2       1.3847      0.133     10.377      0.000       1.123       1.646
+pl_eqtlim        473.2534    181.092      2.613      0.009     118.225     828.282
+st_teff            0.0807      0.009      9.316      0.000       0.064       0.098
+st_tefferr1        0.7417      0.162      4.591      0.000       0.425       1.058
+st_tefferr2        0.5867      0.145      4.058      0.000       0.303       0.870
+st_raderr1        12.8342      4.377      2.932      0.003       4.253      21.416
+st_masserr1      345.0214     57.384      6.012      0.000     232.520     457.523
+st_met           161.2479     28.275      5.703      0.000     105.816     216.680
+st_meterr1       156.9576     76.748      2.045      0.041       6.494     307.422
+st_metlim       -391.4881    152.126     -2.573      0.010    -689.729     -93.248
+st_logg         -381.9524     29.107    -13.122      0.000    -439.016    -324.888
+st_loggerr1     -238.1072     64.354     -3.700      0.000    -364.273    -111.942
+sy_dist           -0.1263      0.016     -7.734      0.000      -0.158      -0.094
+sy_disterr1        0.3274      0.151      2.167      0.030       0.031       0.624
+sy_kmagerr2      -62.1363     31.078     -1.999      0.046    -123.063      -1.209
+==============================================================================
+Omnibus:                     1833.353   Durbin-Watson:                   1.756
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            90700.303
+Skew:                          -1.155   Prob(JB):                         0.00
+Kurtosis:                      24.712   Cond. No.                     1.00e+16
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The smallest eigenvalue is 3.91e-15. This might indicate that there are
+strong multicollinearity problems or that the design matrix is singular.
+```
+
+
+
