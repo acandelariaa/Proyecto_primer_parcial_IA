@@ -189,3 +189,335 @@ El error bajo de 272 K a 250 K.
 ![log_insol](log_insol.png)
 
 
+Ya hay una mejor simetria de datos, no es la mejor claramente, pero mejoro.
+
+Interesante escenario, no creen?
+
+
+# 2) Mejor combinación
+Probemos a ver si una combinacion de ciertas variables funcionamejor que la otra, como solo nos reducimos a variables, probemos todas las combinaciones posibles para ver cual da mejores resultados.
+
+
+
+>PythonCode
+
+
+
+```python
+from itertools import combinations
+from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LinearRegression
+import numpy as np
+import pandas as pd
+
+# ── Dataset con transformación logarítmica ────────────────────────────────────
+X_full = df_model_log.drop(columns="pl_eqt")
+y_full = df_model_log["pl_eqt"]
+
+# ── Exhaustive search con CV (k=5) ────────────────────────────────────────────
+resultados = []
+
+for r in range(1, len(X_full.columns) + 1):
+    for combo in combinations(X_full.columns, r):
+        X_combo = X_full[list(combo)]
+
+        r2_scores  = cross_val_score(LinearRegression(), X_combo, y_full, cv=5, scoring="r2")
+        mae_scores = cross_val_score(LinearRegression(), X_combo, y_full, cv=5, scoring="neg_mean_absolute_error")
+
+        resultados.append({
+            "variables":  " + ".join(combo),
+            "n_vars":     len(combo),
+            "R² medio":   round(r2_scores.mean(), 4),
+            "R² std":     round(r2_scores.std(), 4),
+            "MAE medio":  round(-mae_scores.mean(), 2),
+            "MAE std":    round(mae_scores.std(), 2),
+        })
+
+df_resultados = pd.DataFrame(resultados).sort_values("R² medio", ascending=False)
+
+print("=" * 75)
+print("  EXHAUSTIVE SEARCH — Cross Validation (k=5)")
+print("=" * 75)
+print(df_resultados.to_string(index=False))
+```
+
+
+
+>Output
+
+
+
+```text
+===========================================================================
+  EXHAUSTIVE SEARCH — Cross Validation (k=5)
+===========================================================================
+                  variables  n_vars  R² medio  R² std  MAE medio  MAE std
+          pl_insol + st_rad       2    0.6944  0.0207     167.79    15.02
+pl_insol + st_teff + st_rad       3    0.6933  0.0200     168.33    14.79
+                   pl_insol       1    0.6910  0.0269     169.58    15.41
+         pl_insol + st_teff       2    0.6891  0.0209     169.73    13.57
+           st_teff + st_rad       2    0.1016  0.1470     317.82    34.85
+                     st_rad       1    0.0988  0.1467     317.43    34.25
+                    st_teff       1    0.0328  0.1293     338.44    44.56
+
+```
+
+
+
+
+Bien!, al parecer la mejor combinación posible es utilizando solamente pl_insol y st_rad, el cual da un error mucho mas bajo.
+
+Interesante reacción.
+
+
+
+
+# 3) Interacciones entre variables
+
+Probemos una interacción de variables.
+
+Digamos:
+
+pl_insol / st_rad
+
+st_tff/pl_insol
+
+creemos esas variables y verifiquemos las metricas
+
+
+>PythonCode
+
+
+
+```python
+import numpy as np
+
+# ── Crear variables derivadas ─────────────────────────────────────────────────
+df_model_derived = df_model_log.copy()
+
+df_model_derived["insol_rad"]  = df_model_log["pl_insol"] / df_model_log["st_rad"]
+df_model_derived["teff_insol"] = df_model_log["st_teff"]  / df_model_log["pl_insol"]
+
+# ── Split ─────────────────────────────────────────────────────────────────────
+X_der = df_model_derived.drop(columns="pl_eqt")
+y_der = df_model_derived["pl_eqt"]
+
+X_train_der, X_test_der, y_train_der, y_test_der = train_test_split(
+    X_der, y_der, test_size=0.2, random_state=42
+)
+
+X_train_der_sm = sm.add_constant(X_train_der)
+X_test_der_sm  = sm.add_constant(X_test_der)
+
+# ── Modelo ────────────────────────────────────────────────────────────────────
+model_der = sm.OLS(y_train_der, X_train_der_sm).fit()
+print(model_der.summary())
+
+# ── Métricas test ─────────────────────────────────────────────────────────────
+y_pred_der = model_der.predict(X_test_der_sm)
+
+r2_der   = r2_score(y_test_der, y_pred_der)
+mae_der  = mean_absolute_error(y_test_der, y_pred_der)
+rmse_der = np.sqrt(mean_squared_error(y_test_der, y_pred_der))
+
+print("\n" + "=" * 45)
+print("  MÉTRICAS EN TEST SET")
+print("=" * 45)
+print(f"  R²:   {r2_der:.4f}")
+print(f"  MAE:  {mae_der:.2f} K")
+print(f"  RMSE: {rmse_der:.2f} K")
+
+```
+
+
+
+>Output
+
+
+
+
+```text
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.721
+Model:                            OLS   Adj. R-squared:                  0.721
+Method:                 Least Squares   F-statistic:                     1888.
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        09:15:57   Log-Likelihood:                -25254.
+No. Observations:                3652   AIC:                         5.052e+04
+Df Residuals:                    3646   BIC:                         5.056e+04
+Df Model:                           5                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const       -218.7517     41.790     -5.235      0.000    -300.686    -136.818
+pl_insol     211.1109      5.278     39.996      0.000     200.762     221.460
+st_teff       -0.0034      0.009     -0.378      0.705      -0.021       0.014
+st_rad       184.1263     29.848      6.169      0.000     125.606     242.647
+insol_rad      8.2388      3.877      2.125      0.034       0.637      15.841
+teff_insol     0.0002   9.24e-05      1.667      0.096   -2.71e-05       0.000
+==============================================================================
+Omnibus:                     2271.438   Durbin-Watson:                   2.002
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            34934.998
+Skew:                           2.707   Prob(JB):                         0.00
+Kurtosis:                      17.152   Cond. No.                     4.57e+05
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.57e+05. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+=============================================
+  MÉTRICAS EN TEST SET
+=============================================
+  R²:   0.7007
+  MAE:  164.93 K
+  RMSE: 258.62 K
+
+```
+
+
+
+Realmente no mejoro mucho, R^2 sigue igual, pero ojo, si vemos con atención, al parecer al agregar esas interacciones, st_teff, dejo de importar en un 70%, muy interesante.
+
+
+
+# 4) Normalización de Lasso
+
+
+# Estandarización de coeficientes
+
+Como vimos, la estandarización puede ayudar a los datos, resolviendo la multicolinealidad.
+
+Probemos ese metodo para ver si el metodo de la regresion lineal multiple mejora o empeora.
+
+
+
+>PythonCode
+
+
+
+
+```python
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+# ── Crear variables derivadas ─────────────────────────────────────────────────
+df_model_derived = df_model_log.copy()
+
+df_model_derived["insol_rad"]  = df_model_log["pl_insol"] / df_model_log["st_rad"]
+df_model_derived["teff_insol"] = df_model_log["st_teff"]  / df_model_log["pl_insol"]
+
+# ── Split ─────────────────────────────────────────────────────────────────────
+X_der = df_model_derived.drop(columns="pl_eqt")
+y_der = df_model_derived["pl_eqt"]
+
+X_train_der, X_test_der, y_train_der, y_test_der = train_test_split(
+    X_der, y_der, test_size=0.2, random_state=42
+)
+
+# ── Estandarizar ──────────────────────────────────────────────────────────────
+scaler = StandardScaler()
+X_train_der_scaled = scaler.fit_transform(X_train_der)
+X_test_der_scaled = scaler.transform(X_test_der)
+
+# Convertir de vuelta a DataFrame CON LOS ÍNDICES CORRECTOS
+X_train_der_scaled = pd.DataFrame(X_train_der_scaled,
+                                   columns=X_train_der.columns,
+                                   index=X_train_der.index)
+X_test_der_scaled = pd.DataFrame(X_test_der_scaled,
+                                 columns=X_test_der.columns,
+                                 index=X_test_der.index)
+
+X_train_der_sm = sm.add_constant(X_train_der_scaled)
+X_test_der_sm  = sm.add_constant(X_test_der_scaled)
+
+# ── Modelo ────────────────────────────────────────────────────────────────────
+model_der = sm.OLS(y_train_der, X_train_der_sm).fit()
+print(model_der.summary())
+
+# ── Métricas test ─────────────────────────────────────────────────────────────
+y_pred_der = model_der.predict(X_test_der_sm)
+
+r2_der   = r2_score(y_test_der, y_pred_der)
+mae_der  = mean_absolute_error(y_test_der, y_pred_der)
+rmse_der = np.sqrt(mean_squared_error(y_test_der, y_pred_der))
+
+print("\n" + "=" * 45)
+print("  MÉTRICAS EN TEST SET")
+print("=" * 45)
+print(f"  R²:   {r2_der:.4f}")
+print(f"  MAE:  {mae_der:.2f} K")
+print(f"  RMSE: {rmse_der:.2f} K")
+
+# ── Ranking de importancia ───────────────────────────────────────────────────
+print("\n" + "=" * 45)
+print("  RANKING DE VARIABLES POR IMPACTO")
+print("=" * 45)
+coefs = model_der.params[1:].abs().sort_values(ascending=False)
+print(coefs)
+
+```
+
+
+
+
+```text
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.721
+Model:                            OLS   Adj. R-squared:                  0.721
+Method:                 Least Squares   F-statistic:                     1888.
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        12:37:54   Log-Likelihood:                -25254.
+No. Observations:                3652   AIC:                         5.052e+04
+Df Residuals:                    3646   BIC:                         5.056e+04
+Df Model:                           5                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const        909.6811      4.037    225.318      0.000     901.765     917.597
+pl_insol     354.4441      8.862     39.996      0.000     337.069     371.819
+st_teff       -2.2794      6.027     -0.378      0.705     -14.096       9.537
+st_rad        59.1598      9.590      6.169      0.000      40.357      77.962
+insol_rad     18.0581      8.499      2.125      0.034       1.395      34.721
+teff_insol     6.7718      4.063      1.667      0.096      -1.194      14.737
+==============================================================================
+Omnibus:                     2271.438   Durbin-Watson:                   2.002
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            34934.998
+Skew:                           2.707   Prob(JB):                         0.00
+Kurtosis:                      17.152   Cond. No.                         5.23
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+=============================================
+  MÉTRICAS EN TEST SET
+=============================================
+  R²:   0.7007
+  MAE:  164.93 K
+  RMSE: 258.62 K
+
+=============================================
+  RANKING DE VARIABLES POR IMPACTO
+=============================================
+pl_insol      354.444071
+st_rad         59.159808
+insol_rad      18.058066
+teff_insol      6.771768
+st_teff         2.279401
+dtype: float64
+
+```
+
+
+Al estandarizar las variables predictoras, logramos resolver el problema de multicolinealidad que afectaba al modelo original. El **Condition Number bajó de 4.57e+05 a 5.23**, indicando que los coeficientes ahora son numéricamente estables y confiables.
+
+Las métricas de desempeño (R², MAE, RMSE) se mantuvieron idénticas, lo cual es esperado, ya que la estandarización no cambia las relaciones entre variables, solo reescala los datos. Sin embargo, ahora podemos **comparar directamente los coeficientes** para determinar el impacto relativo de cada variable.
+
+El análisis revela que `pl_insol` es, por mucho, la variable más influyente (coef = 354.44), siendo aproximadamente 6 veces más importante que `st_rad` (coef = 59.16). Las variables derivadas (`insol_rad` y `teff_insol`) aportan poco al modelo, mientras que `st_teff` resultó estadísticamente no significativa (p = 0.705).
