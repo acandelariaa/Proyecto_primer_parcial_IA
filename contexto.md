@@ -57,3 +57,12 @@ La elección de un enfoque de regresión tiene sentido por varias razones. Prime
 Los datos fueron recopilados del **NASA Exoplanet Archive** (https://exoplanetarchive.ipac.caltech.edu), el repositorio oficial de la NASA para datos de exoplanetas confirmados. El archivo utilizado es el **Planetary Systems Composite Parameters** (PSCompPars), descargado de la pagina oficial de la NASA.
 
 Este dataset esta conformado por multiples mediciones para cada planeta avistado, observaciones de múltiples telescopios y misiones espaciales, incluyendo Kepler, K2, TESS y observatorios terrestres.
+
+
+
+
+---
+
+### Siguiente pagina
+
+[>>> Exploracion de datos](explorar_datos.md)
