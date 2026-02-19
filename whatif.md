@@ -186,6 +186,6 @@ R^2 ahora explica el 72.1 % de los datos originales
 El error bajo de 272 K a 250 K.
 
 
-
+![log_insol](log_insol.png)
 
 
