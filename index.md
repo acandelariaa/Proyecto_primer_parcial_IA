@@ -57,6 +57,9 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 
 ---
 
+## Procedimiento
+---
+
 ## Referencias
 
 - **NASA Exoplanet Archive**: https://exoplanetarchive.ipac.caltech.edu/
