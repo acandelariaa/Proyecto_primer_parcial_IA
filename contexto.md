@@ -1,4 +1,4 @@
-# Inteligencia Artoificial - Proyecto parcial 1
+# Inteligencia Artiificial - Proyecto parcial 1
 ### Juan Angel Candelaria Rodriguez 653728
 
 Este proyecto tiene como finalidad predecir la temperatura de equilibrio de un planeta en referencia a la tierra para determinar si puede ser potencialmente habitable.
@@ -7,10 +7,10 @@ Este proyecto tiene como finalidad predecir la temperatura de equilibrio de un p
 ## ¿Qué tan parecido a la Tierra puede ser un planeta fuera de nuestro sistema solar?
 
 **Inteligencia Artificial | Universidad de Monterrey**  
-**Proyecto Final – Unidad 1: Modelos de Regresión**
+**Proyecto parcial – Unidad 1: Modelos de Regresión**
 
 ---
-#Planteamiento del Problema y Contexto de los Datos
+
 
 ### Contexto
 
@@ -42,12 +42,18 @@ De modo que este indice nos podria decir lo siguiente:
 - Un valor < 255 K indica un planeta más frío que la Tierra.
 - Un valor de > 255 K indica un planeta más caliente que la Tierra.
 
+
+### Justificación
+
+
+
+La elección de un enfoque de regresión tiene sentido por varias razones. Primero, pl_eqt es una variable continua y cuantitativa, no una categoría de sí o no. Además, existe una relación física ya conocida entre las características de la estrella, la órbita y la temperatura del planeta. La idea no es etiquetar planetas como habitables o no habitables, sino cuantificar qué tan cerca está cada uno del perfil térmico de la Tierra, que es esencialmente un problema de predicción.
+
+
+--- 
+
 ### Fuentes
 
 Los datos fueron recopilados del **NASA Exoplanet Archive** (https://exoplanetarchive.ipac.caltech.edu), el repositorio oficial de la NASA para datos de exoplanetas confirmados. El archivo utilizado es el **Planetary Systems Composite Parameters** (PSCompPars), descargado de la pagina oficial de la NASA.
 
 Este dataset esta conformado por multiples mediciones para cada planeta avistado, observaciones de múltiples telescopios y misiones espaciales, incluyendo Kepler, K2, TESS y observatorios terrestres.
-
-### Justificación
-
-La elección de un enfoque de regresión tiene sentido por varias razones. Primero, pl_eqt es una variable continua y cuantitativa, no una categoría de sí o no. Además, existe una relación física ya conocida entre las características de la estrella, la órbita y la temperatura del planeta. La idea no es etiquetar planetas como habitables o no habitables, sino cuantificar qué tan cerca está cada uno del perfil térmico de la Tierra, que es esencialmente un problema de predicción.
