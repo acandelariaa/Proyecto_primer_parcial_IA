@@ -521,3 +521,10 @@ Al estandarizar las variables predictoras, logramos resolver el problema de mult
 Las métricas de desempeño (R², MAE, RMSE) se mantuvieron idénticas, lo cual es esperado, ya que la estandarización no cambia las relaciones entre variables, solo reescala los datos. Sin embargo, ahora podemos **comparar directamente los coeficientes** para determinar el impacto relativo de cada variable.
 
 El análisis revela que `pl_insol` es, por mucho, la variable más influyente (coef = 354.44), siendo aproximadamente 6 veces más importante que `st_rad` (coef = 59.16). Las variables derivadas (`insol_rad` y `teff_insol`) aportan poco al modelo, mientras que `st_teff` resultó estadísticamente no significativa (p = 0.705).
+
+
+
+Nota: si has llegado hasta esta parte, muchas gracias por leerme, espero que te haya gustado, se que puede ser mucha informacion y mucho para tratar, pero con el enfoque correcto de machine learning, podemos hacer cosas increibles e interesantes.
+
+
+Muchas gracias!!!!
