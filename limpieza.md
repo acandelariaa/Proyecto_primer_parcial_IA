@@ -707,3 +707,8 @@ Shape final: (4566, 4)
 
 Perfecto, con esto ya tendriamos nuestros datos limpios para trabajar, podemos seguir a la siguiente seccion para la construccion y comparación de nuestros modelos.
 
+---
+
+### Siguiente pagina
+
+[>>>> Modelos](modelos.md)
