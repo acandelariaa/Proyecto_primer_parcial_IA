@@ -328,3 +328,85 @@ Total columnas numéricas analizadas: 67
 ```
 
 ![outliers](outliers.png)
+
+
+
+Bien de momento ya hemos identificado los outliers y algunos valores faltantes que hemos eliminado por gran falta de datos. Realmente con los outliers no habria mucho problema ya que en si el maximo que se tiene es 20% de outliers, los cuales podriamos llenar con algun metodo de imputación y tecnicamente no deberia de tener un efecto negativo ya que el porcentaje de datos atipicos no es elevado.
+
+
+
+### Subconjunto de variables
+
+Segun el contexto de los datos, las variables con "err", son meramente incertidumbres de la medicion, pero no son un factor fisico directamente relacionado con el planeta, realmente no seria logico tratar de predecir su temperatura de equilibrio por medio de una incertidumbre, por lo cual un acercamiento inicial seria seleccionar un subconjunto de variables y trabajar con ellas, de esa forma, estariamos re alguna manera "reduciendo las dimensiones", sin eliminar esas variables que si bien, por contexto no serian de utilidad para la salida, si podrian servirnos para el contexto y expliración de datos.
+
+
+Por lo tanto, gracias al contexto de los datos, utilizaremos las variables descritas al principio, las cuales cuentan con mas peso, segun fuentes. Estas son: 
+-  `st_teff` (temperatura efectiva de la estrella)
+- `st_rad` (radio estelar)
+- `pl_orbsmax` (semieje mayor orbital)
+- `pl_insol` (insolación recibida)
+- `pl_orbeccen` (excentricidad orbital)
+- `st_mass` (excentricidad orbital)
+- `sy_snum` (numero de estrellas en el sistema)
+- `st_logg` (Gravedad superficial estelar en escala logarítmica (log g, cgs))
+
+De modo que estas serian nuestro subconjunto de variables
+
+
+>PythonCode
+
+
+
+
+```python
+# Definir subconjunto de variables
+# Subconjunto para el modelo
+vars_modelo = ["pl_eqt", "pl_insol", "pl_orbsmax", "pl_orbeccen", "st_teff", "st_rad", "st_mass", "st_logg","sy_snum"]
+df_subconjunto = df_clean[vars_modelo].copy()
+
+### Matriz de correlación
+
+# Debido a que puede haber la posibilidad de haber cierta colinearidad en los datos, veamos la correlacion en una matriz para ver la relacion de unas contra otras
+
+# Matriz de correlación
+corr = df_subconjunto.corr(method="pearson")
+
+# Gráfica
+fig, ax = plt.subplots(figsize=(10, 8))
+fig.patch.set_facecolor("#0b0e1a")
+ax.set_facecolor("#111628")
+
+sns.heatmap(
+    corr,
+    annot=True,
+    fmt=".2f",
+    cmap="coolwarm",
+    center=0,
+    linewidths=0.5,
+    linecolor="#1e2540",
+    ax=ax,
+    annot_kws={"size": 10, "color": "white"},
+    cbar_kws={"shrink": 0.8}
+)
+
+ax.set_title("Matriz de Correlación — df_model",
+             color="#e2e8f0", fontsize=13, fontweight="bold", pad=15)
+ax.tick_params(colors="#e2e8f0", labelsize=9)
+
+plt.tight_layout()
+plt.savefig("correlacion_df_model.png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+plt.show()
+
+# Resumen numérico — correlación con pl_eqt ordenada por valor absoluto
+print("\nCorrelación con pl_eqt (ordenado por valor absoluto):")
+print(corr["pl_eqt"].drop("pl_eqt").abs().sort_values(ascending=False).to_string())
+
+```
+
+
+>Output
+
+```text
+
+
+```
