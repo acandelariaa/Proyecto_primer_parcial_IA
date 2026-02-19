@@ -3,7 +3,6 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange.svg)](https://jupyter.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
@@ -13,6 +12,8 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 
 **Dataset**: NASA Exoplanet Archive (PSCompPars) - 6,107 exoplanetas confirmados  
 **Objetivo**: Identificar los determinantes físicos de la temperatura planetaria y priorizar candidatos para búsqueda de vida extraterrestre.
+
+## Recursos
 
 ---
 
