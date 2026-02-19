@@ -464,3 +464,5 @@ plt.show()
 
 
 >Output
+
+![prediccion2](prediccion2.png)
