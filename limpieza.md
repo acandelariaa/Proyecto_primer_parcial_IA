@@ -406,7 +406,17 @@ print(corr["pl_eqt"].drop("pl_eqt").abs().sort_values(ascending=False).to_string
 
 >Output
 
-```text
+![correlacion](correlacion.png)
 
+```text
+Correlación con pl_eqt (ordenado por valor absoluto):
+pl_insol       0.587371
+st_mass        0.491618
+st_rad         0.451124
+st_logg        0.444563
+st_teff        0.424145
+sy_snum        0.092600
+pl_orbsmax     0.066231
+pl_orbeccen    0.051549
 
 ```
