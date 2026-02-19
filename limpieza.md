@@ -78,4 +78,41 @@ print(f"  < 20% nulos:  {(nulls < 20).sum()} columnas")
 ```
 
 
-![valores nulos](.png)
+![valores_nulos](valores_nulos.png)
+
+
+WOW, increible grafica, con esto podemos darnos cuenta de cuantas columnas con valores faltantes tenemos, afortunadamente nuestra variable de interes, **(pl_eqt)**, solo le falta el 25% de los dato, es decir, tenemos 75% de datos que si son relevantes.
+
+Ahora, como podemos ver, hay variables que tienen 50% de los datos faltantes o incluso hay variables con 60 a 70 % de datos faltantes, y realmente con eso no podriamos trabajar ya que solo contariamos con el 20 -30% de los datos y no seria estadisticamente confiable trabajar con ellos, por lo tanto, definiremos que las variables con un porcentaje mayor al 50% seran automaticamente descartadas.
+
+Aunado a esto, solo 12 columnas tienen valores nulos mayores al 50%, por lo cual no representaria un riesgo si las quitamos.
+
+
+### Filtrar dataset por valores faltantes por columna
+
+>PythonCode
+
+
+```python
+print(f"Shape original:  {df_raw.shape}  ({df_raw.shape[1]} columnas, {df_raw.shape[0]} filas)")
+
+# ── Identificar y eliminar columnas con más del 50% de nulos ─────────────────
+umbral = 0.50
+nulos_pct = df_raw.isnull().mean()
+cols_eliminar = nulos_pct[nulos_pct > umbral].index.tolist()
+
+print(f"\nColumnas eliminadas ({len(cols_eliminar)}) — más del 50% de nulos:")
+for col in cols_eliminar:
+    print(f"  - {col:30s}  {nulos_pct[col]*100:.1f}%")
+
+# ── Dataset limpio ────────────────────────────────────────────────────────────
+df_clean = df_raw.drop(columns=cols_eliminar)
+
+print(f"\nShape resultante: {df_clean.shape}  ({df_clean.shape[1]} columnas, {df_clean.shape[0]} filas)")
+```
+
+
+>Output
+
+
+![outliers](outliers.png)
