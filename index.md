@@ -28,6 +28,18 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 | **Lasso Polinomial** | **0.907** | **81.85** | **144.40** | **Predicción** 
 | Backward Elimination | 0.507 | 180.00 | 250.00 | **Inferencia** |
 
+
+## Apoyos visuales
+
+
+### Regresión lineal multiple
+![prediccion1](prediccion1.png)
+
+
+### Regresión No lineal (Polinomia grado 2 + lasso)
+![prediccion2](prediccion2.png)
+
+
 ### Hallazgos Clave:
 - **Insolación** es el factor dominante (6x más importante que otros)
 -  Identificados **159 planetas** en zona térmica habitable
