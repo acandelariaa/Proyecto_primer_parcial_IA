@@ -785,3 +785,102 @@ strong multicollinearity problems or that the design matrix is singular.
 
 
 
+Filtremos ahora las columnas con el termino de error, para que no afecten en nuestro dataset
+
+
+>Python Code
+
+
+
+```python
+# Excluir columnas de error e incertidumbre
+cols_error = [c for c in X_inf.columns if "err" in c or c.endswith("lim")]
+X_inf_clean = X_inf.drop(columns=cols_error)
+
+print(f"Variables disponibles sin errores: {X_inf_clean.shape[1]}")
+
+
+
+modelo_inf2, vars_finales2 = backward_elimination(X_inf_clean, y_inf)
+
+print(f"\nVariables finales seleccionadas ({len(vars_finales2)}):")
+for v in vars_finales2:
+    print(f"  - {v}")
+
+print("\n")
+print(modelo_inf2.summary())
+```
+
+
+
+>Output
+
+
+
+
+
+```text
+Iteración 01 | Variables: 17 | Peor variable: sy_kmag                   | p-value: 0.9610
+Iteración 02 | Variables: 16 | Peor variable: pl_bmasse                 | p-value: 0.6171
+Iteración 03 | Variables: 15 | Peor variable: pl_radj                   | p-value: 0.6020
+Iteración 04 | Variables: 14 | Peor variable: st_teff                   | p-value: 0.5346
+Iteración 05 | Variables: 13 | Peor variable: sy_vmag                   | p-value: 0.2204
+Iteración 06 | Variables: 12 | Peor variable: sy_gaiamag                | p-value: 0.0956
+Iteración 07 | Variables: 11 | Peor variable: st_rad                    | p-value: 0.0702
+Iteración 08 | Variables: 10 | Peor variable: pl_orbper                 | p-value: 0.0128
+
+── Condición de paro alcanzada: todos los p-values ≤ 0.05 ──
+
+Variables finales seleccionadas (10):
+  - pl_orbper
+  - pl_orbsmax
+  - pl_rade
+  - pl_bmassj
+  - pl_orbeccen
+  - pl_insol
+  - st_mass
+  - st_met
+  - st_logg
+  - sy_dist
+
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.507
+Model:                            OLS   Adj. R-squared:                  0.506
+Method:                 Least Squares   F-statistic:                     468.8
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        10:48:40   Log-Likelihood:                -32900.
+No. Observations:                4566   AIC:                         6.582e+04
+Df Residuals:                    4555   BIC:                         6.589e+04
+Df Model:                          10                                         
+Covariance Type:            nonrobust                                         
+===============================================================================
+                  coef    std err          t      P>|t|      [0.025      0.975]
+-------------------------------------------------------------------------------
+const        2200.1979    162.892     13.507      0.000    1880.851    2519.545
+pl_orbper    -2.54e-06   1.02e-06     -2.489      0.013   -4.54e-06   -5.39e-07
+pl_orbsmax      0.1088      0.034      3.243      0.001       0.043       0.175
+pl_rade        16.3608      1.212     13.495      0.000      13.984      18.738
+pl_bmassj      15.3164      2.406      6.366      0.000      10.599      20.034
+pl_orbeccen  -577.1029     48.918    -11.797      0.000    -673.007    -481.199
+pl_insol        0.1482      0.004     36.702      0.000       0.140       0.156
+st_mass       241.5204     28.632      8.435      0.000     185.387     297.653
+st_met         84.8156     29.204      2.904      0.004      27.562     142.069
+st_logg      -357.7322     31.954    -11.195      0.000    -420.378    -295.087
+sy_dist        -0.0749      0.011     -6.894      0.000      -0.096      -0.054
+==============================================================================
+Omnibus:                     1637.864   Durbin-Watson:                   1.714
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            62118.247
+Skew:                          -1.024   Prob(JB):                         0.00
+Kurtosis:                      20.953   Cond. No.                     2.06e+08
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 2.06e+08. This might indicate that there are
+strong multicollinearity or other numerical problems.
+```
+
+
+
