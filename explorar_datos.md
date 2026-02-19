@@ -157,3 +157,9 @@ df_raw
 > **Símbolo terrestre ⊕:** El círculo con una cruz representa al Sol, nuestra estrella. Se usa como unidad de referencia en variables estelares: masas solares (M⊕), radios solares (R⊙), etc.
 
 
+---
+
+### Siguiente pagina
+
+
+[>>>> Limpieza de datos](limpieza.md)
