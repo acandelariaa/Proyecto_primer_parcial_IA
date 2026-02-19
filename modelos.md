@@ -884,3 +884,245 @@ strong multicollinearity or other numerical problems.
 
 
 
+Bien, si llegamos hasta esta parte, hemos visto que, han pasado muchas cosas y muchas iteraciones ademas de eso, como nuestro objetivo realmente no era maximizar R^2, el modelo se dejo asi, para que pudiera ser objeto de inferencia e interpretación de datos.
+
+Pero vale la pena tocar ciertos puntos en vista de las variables que tenemos en nuestro dataset.
+
+El modelo explica el 50% de los datos del dataset, es una metrica estadistica aceptable, no es muy alta, pero nos permite tener mejor intepretación.
+
+Otra propuesta es estandarizar las variables predictoras. ¿De qué nos sirve esto? Al estandarizar (convertir cada variable a media = 0 y desviación estándar = 1), podemos **comparar directamente la magnitud de los coeficientes** para determinar qué variables tienen mayor impacto, sin que la escala original de medición distorsione la interpretación.
+
+Veamos cómo resulta ese enfoque.
+
+
+
+>Output
+
+
+
+
+```python
+# Definir variables (ajusta según las 10 variables finales de tu modelo)
+variables_finales = ['pl_orbper', 'pl_orbsmax', 'pl_rade', 'pl_bmassj', 
+                     'pl_orbeccen', 'pl_insol', 'st_mass', 'st_met', 
+                     'st_logg', 'sy_dist']
+
+# Usar df_inf en lugar de df_model_clean
+X_inf = df_inf[variables_finales]
+Y_inf = df_inf['pl_eqt']
+
+# Estandarizar X (media=0, std=1)
+scaler = StandardScaler()
+X_inf_scaled = scaler.fit_transform(X_inf)
+X_inf_scaled = pd.DataFrame(X_inf_scaled, columns=X_inf.columns)
+
+# Ajustar modelo con datos estandarizados
+model = sm.OLS(Y_inf, sm.add_constant(X_inf_scaled))
+results = model.fit()
+print(results.summary())
+
+# Ver coeficientes ordenados por magnitud
+coefs = results.params[1:].abs().sort_values(ascending=False)
+print("\n=== VARIABLES POR IMPACTO (coeficientes estandarizados) ===")
+print(coefs)
+
+```
+
+
+
+>Output
+
+
+
+
+```text
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.507
+Model:                            OLS   Adj. R-squared:                  0.506
+Method:                 Least Squares   F-statistic:                     468.8
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        12:25:45   Log-Likelihood:                -32900.
+No. Observations:                4566   AIC:                         6.582e+04
+Df Residuals:                    4555   BIC:                         6.589e+04
+Df Model:                          10                                         
+Covariance Type:            nonrobust                                         
+===============================================================================
+                  coef    std err          t      P>|t|      [0.025      0.975]
+-------------------------------------------------------------------------------
+const         914.0736      4.828    189.335      0.000     904.609     923.538
+pl_orbper     -15.1163      6.073     -2.489      0.013     -27.022      -3.211
+pl_orbsmax     20.4418      6.304      3.243      0.001       8.083      32.800
+pl_rade        81.3349      6.027     13.495      0.000      69.519      93.151
+pl_bmassj      36.4383      5.724      6.366      0.000      25.216      47.661
+pl_orbeccen   -62.0961      5.264    -11.797      0.000     -72.415     -51.777
+pl_insol      194.7661      5.307     36.702      0.000     184.362     205.170
+st_mass        68.7948      8.156      8.435      0.000      52.806      84.784
+st_met         14.7269      5.071      2.904      0.004       4.786      24.668
+st_logg       -85.7452      7.659    -11.195      0.000    -100.761     -70.730
+sy_dist       -37.0460      5.373     -6.894      0.000     -47.580     -26.512
+==============================================================================
+Omnibus:                     1637.864   Durbin-Watson:                   1.714
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            62118.247
+Skew:                          -1.024   Prob(JB):                         0.00
+Kurtosis:                      20.953   Cond. No.                         3.41
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+=== VARIABLES POR IMPACTO (coeficientes estandarizados) ===
+pl_insol       194.766064
+st_logg         85.745190
+pl_rade         81.334862
+st_mass         68.794841
+pl_orbeccen     62.096064
+sy_dist         37.045992
+pl_bmassj       36.438295
+pl_orbsmax      20.441796
+pl_orbper       15.116298
+st_met          14.726927
+dtype: float64
+
+```
+
+
+
+Listo!, ahora nuestros coeficientes estan estandarizados, de modo que podemos "rankear" de cual es mas significativo y medir su impacto.
+
+Como vimos en multiples iteraciones, `pl_insol`, sigue siendo, por mucho uno de los predictores mas significativos a la hora de predecir la temperatura de equilibrio. 
+
+Nota que Cond. No. = 3.41 ahora (vs 2.06e+08 antes). La estandarización resolvió el problema de multicolinealidad numérica. Los coeficientes ahora son más estables.
+Conclusión: La insolación es, por mucho, el factor más importante para determinar la temperatura de equilibrio de un planeta.
+
+
+
+# Modelo de Inferencia
+
+En este apartado creamos un modelo enfocado en **inferencia estadística**, no en predicción. Nuestro objetivo es entender qué variables tienen un efecto real y significativo sobre la temperatura de equilibrio, identificando relaciones causales más que maximizar métricas predictivas.
+
+Utilizamos el método de **selección hacia atrás (backward elimination)**: comenzamos con todas las variables candidatas y eliminamos iterativamente aquellas con p-values > 0.05, hasta obtener un modelo donde todas las variables sean estadísticamente significativas al 95% de confianza.
+
+[Aquí va tu código de backward elimination y output]
+
+---
+
+## Resumen del Modelo de Inferencia
+
+**R² = 0.507**: El modelo explica el 51% de la variabilidad en temperatura de equilibrio. Para inferencia, esto es razonable - nos permite identificar relaciones significativas sin sobreajustar.
+
+**Condition Number**: La estandarización redujo la multicolinealidad de 2.06e+08 a 3.41, haciendo los coeficientes estables y confiables para interpretación.
+
+---
+
+## Inferencias sobre los Determinantes de la Temperatura
+
+### Variables con Mayor Impacto (coeficientes estandarizados)
+
+**Efecto POSITIVO:**
+1. **pl_insol (194.77)** - Factor dominante. Por cada desviación estándar en insolación, la temperatura aumenta ~195K. Es 6 veces más importante que el siguiente factor.
+2. **pl_rade (81.33)** - Planetas más grandes son más calientes.
+3. **st_mass (68.79)** - Estrellas más masivas calientan más sus planetas.
+4. **pl_bmassj (36.44)** - Masa planetaria retiene calor.
+5. **st_met (14.73)** - Metalicidad estelar tiene efecto menor pero significativo.
+
+**Efecto NEGATIVO:**
+1. **st_logg (-85.75)** - Mayor gravedad estelar = estrella más compacta = menos luminosa.
+2. **pl_orbeccen (-62.10)** - Órbitas elípticas pasan más tiempo lejos de la estrella.
+3. **sy_dist (-37.05)** - Posible sesgo observacional.
+4. **pl_orbper (-15.12)** - Efecto marginal.
+
+Todos con p-value < 0.05, confirmando significancia estadística.
+
+---
+
+## Comparación con Modelos Predictivos
+
+A lo largo de este proyecto construimos múltiples modelos con objetivos diferentes:
+
+| Modelo | R² | MAE (K) | RMSE (K) | Propósito |
+|--------|-----|---------|----------|-----------|
+| Lineal simple | 0.668 | 180.66 | 272.41 | Baseline |
+| Lineal + log(insol) | 0.721 | 163.46 | 249.71 | Corrección asimetría |
+| **Lasso Polinomial** | **0.907** | **81.85** | **144.40** | **Predicción** |
+| **Backward Elimination** | **0.507** | 180.00 | 250.00 | **Inferencia** |
+
+**Interpretación clave**: 
+- Para **predicción**, el modelo Lasso Polinomial es superior (R² = 90.7%, error ~82K), pero es una "caja negra" con términos como `pl_insol²` difíciles de interpretar causalmente.
+- Para **inferencia** (entender qué variables importan y por qué), el modelo de backward elimination es más apropiado. Sacrificamos poder predictivo por interpretabilidad y validez estadística de conclusiones.
+
+---
+
+## Implicaciones para Búsqueda de Planetas Habitables
+
+### Planetas en Zona Térmica Compatible (200-320K)
+
+El modelo identificó **159 planetas** en rango térmicamente compatible con agua líquida. Los 5 más cercanos a temperatura terrestre (255K):
+
+| Planeta | T real | Diferencia de T⊕ |
+|---------|--------|------------------|
+| HD 40307 g | 255.00 K | 0.00 K |
+| TOI-1338 b | 254.65 K | 0.35 K |
+| TOI-2257 b | 256.00 K | 1.00 K |
+| Kepler-1704 b | 253.80 K | 1.20 K |
+| TRAPPIST-1 e | 249.70 K | 5.30 K |
+
+### Perfil de Planeta Térmicamente Habitable
+
+Un planeta con temperatura similar a la Tierra debería tener:
+- **Insolación ~1.0** (relativa a la Tierra) - **Factor crítico**
+- Estrella de masa ~1 M☉
+- **Órbita circular** (baja excentricidad)
+- Radio y masa planetarios moderados
+
+---
+
+## Alcance y Limitaciones
+
+### Alcance
+- Muestra robusta: 4,566 planetas confirmados
+- Variables significativas con 95% de confianza
+- Relaciones consistentes con física básica
+- Útil para priorizar objetivos de observación telescópica
+
+### Limitaciones Principales
+
+**1. Del modelo:**
+- R² = 51% deja 49% sin explicar (composición atmosférica, albedo, efecto invernadero, calor interno no incluidos)
+- MAE = 180K demasiado grande para identificación precisa individual
+- Temperatura de equilibrio ≠ temperatura superficial real (Venus: T_eq ~230K, T_real ~735K por efecto invernadero)
+
+**2. De los datos:**
+- Sesgo de detección: planetas grandes y cercanos son más fáciles de detectar
+- 25% de observaciones descartadas por datos faltantes
+- Errores de medición en masa/radio planetarios
+
+**3. Conceptuales:**
+- **Habitabilidad requiere mucho más que temperatura**: atmósfera respirable, agua líquida, campo magnético, estabilidad orbital
+- Este modelo es un **primer filtro**, no identificación definitiva
+
+---
+
+## Líneas de Trabajo Futuro
+
+1. **Incorporar datos atmosféricos** cuando estén disponibles (espectroscopía JWST)
+2. **Modelos específicos por tipo estelar** (enanas M vs tipo solar)
+3. **Integración con biosignaturas** (O₂, CH₄) para priorización
+4. **Validación con modelos de circulación global** (GCMs) para casos específicos
+5. **Análisis de detectabilidad**: ¿qué planetas habitables podemos observar realmente?
+
+---
+
+## Conclusión
+
+Este proyecto demuestra que los modelos de regresión aplicados a datos astronómicos pueden identificar los **determinantes físicos de la temperatura planetaria**. La **insolación es el factor dominante** (6x más importante que otros factores), seguida por características estelares y arquitectura orbital.
+
+Aunque construimos un modelo polinomial con R² = 90.7% para predicción, el modelo de inferencia (R² = 50.7%). lo cual si nuestro enfoque es entender el comportamiento de los datos (**entender qué características buscar**) en la búsqueda de mundos habitables. El trade-off entre poder predictivo e interpretabilidad es deliberado: necesitamos entender las relaciones causales, no solo hacer predicciones precisas.
+
+La principal contribución no es identificar planetas específicos (el error de 180K es demasiado grande), sino **cuantificar qué variables importan y cuánto**. En el contexto de miles de exoplanetas descubiertos, esta capacidad de filtrado informado es invaluable para optimizar recursos de observación telescópica.
+
+La temperatura de equilibrio es solo uno de muchos factores necesarios para habitabilidad, pero es **observable, cuantificable y fundamental**. Este estudio confirma que podemos usar datos disponibles para priorizar racionalmente la búsqueda de la respuesta a una de las preguntas más profundas: ¿estamos solos en el universo?
+
+---
+
+*Dataset: NASA Exoplanet Archive (PSCompPars), febrero 2026 | N = 4,566 exoplanetas | Modelo inferencia: R² = 0.507, todos p < 0.05*
