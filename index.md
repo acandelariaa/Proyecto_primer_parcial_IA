@@ -73,7 +73,15 @@ Este proyecto utiliza modelos de regresión para predecir la **temperatura de eq
 ---
 
 ## Procedimiento
+
+
 [Contexto de los datos](contexto.md)
+
+[Exploracion de datos](explorar_datos.md)
+
+[Modelos/conclusion](modelos.md)
+
+[What if??](whatif.md)
 
 ## Referencias
 
