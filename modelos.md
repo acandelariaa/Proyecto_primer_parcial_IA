@@ -1126,3 +1126,8 @@ La temperatura de equilibrio es solo uno de muchos factores necesarios para habi
 ---
 
 *Dataset: NASA Exoplanet Archive (PSCompPars), febrero 2026 | N = 4,566 exoplanetas | Modelo inferencia: R² = 0.507, todos p < 0.05*
+
+
+### Extra
+
+[>>> whatif??](whatif.md)
