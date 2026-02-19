@@ -539,3 +539,318 @@ plt.show()
 
 >Output
 
+![olvsnan](OLVSNAN.png)
+
+
+Bien, de estas graficas podemos ver que de forma general no hay mucho de que prepocuparse, los valores nulos de nuestro subconjunto no pasan del 30%  y los outliers no pasan del 11, sin problema podemos imputar.
+
+Pero hay que tener cuidado, si vemos detenidamente, la variable objetivo tiene 25% de datos faltantes, si llenamos con KNN o algun otro metodo, estariamos produciendo sesgo, ya que estariamos poniendo/ inventando datos donde no hay.
+
+Para que nuetras metricas estadisticas esten basadas en datos reales, podriamos elimianr esas observaciones, perderiamos 25% de los datos, pero, serian todos reales. Vamos a irnos por ese camino.
+
+
+### Eliminar valores nulos de pl_eqt
+
+
+>PythonCode
+
+
+
+```python
+# ── Eliminar filas donde pl_eqt es nulo ──────────────────────────────────────
+df_model = df_model.dropna(subset=["pl_eqt"])
+
+print(f"Filas antes: 6107")
+print(f"Filas después: {len(df_model)}")
+print(f"Filas eliminadas: {6107 - len(df_model)}")
+print(f"\nNulos restantes por columna:")
+print((df_model.isnull().mean() * 100).round(2).to_string())
+```
+
+
+
+>Output
+
+
+
+```text
+Filas antes: 6107
+Filas después: 4566
+Filas eliminadas: 1541
+
+Nulos restantes por columna:
+pl_eqt      0.00
+pl_insol    7.88
+st_teff     0.22
+st_rad      0.35
+
+```
+
+
+
+bien, perdimos aproximadamente 1540 filas, pero aun contamos con 4566, lo cual es bastante bueno, ahora si, podemos llenar esos outliers con KNN, el cual encuentra los vecinos mas cercanos, los promedia y los llena, esto lo haremos para las variables de `pl_insol`,`st_teff` y `st_rad`
+
+### Imputar valores faltantes con KNN
+
+
+>Python Code
+
+
+```python
+
+from sklearn.impute import KNNImputer
+
+# ── Imputación KNN sobre los predictores ─────────────────────────────────────
+imputer = KNNImputer(n_neighbors=5)
+
+df_model_imputed = pd.DataFrame(
+    imputer.fit_transform(df_model),
+    columns=df_model.columns,
+    index=df_model.index
+)
+
+# ── Verificación ──────────────────────────────────────────────────────────────
+print("Nulos después de KNN:")
+print((df_model_imputed.isnull().mean() * 100).round(2).to_string())
+print(f"\nShape final: {df_model_imputed.shape}")
+
+```
+
+
+
+
+>Output
+
+
+
+```text
+Nulos después de KNN:
+pl_eqt      0.0
+pl_insol    0.0
+st_teff     0.0
+st_rad      0.0
+
+Shape final: (4566, 4)
+
+```
+
+
+
+Perfecto, ya no tenemos valores faltantes, vamos ahora con los outliers.
+
+Perfectamente tambien podriamos usar KNN para remplazar los outliers, pero primero tendriamos que marcar esos datos atipicos como NaN, para que KNN los identifique como valores faltantes y luego los rellenaria con los datos de los planetas mas cercanos.
+
+### Remplazar outliers con KNN
+
+
+
+>Python Code
+
+
+
+```python
+# 1. Marcar outliers como NaN
+Q1 = df_model_imputed.quantile(0.25)
+Q3 = df_model_imputed.quantile(0.75)
+IQR = Q3 - Q1
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+df_model_clean = df_model_imputed.copy()
+
+for col in df_model_clean.columns:
+    if col == "pl_eqt":  # la variable objetivo no la tocamos
+        continue
+    mask = (df_model_clean[col] < lower[col]) | (df_model_clean[col] > upper[col])
+    df_model_clean.loc[mask, col] = np.nan
+
+print("Nulos después de marcar outliers:")
+print((df_model_clean.isnull().mean() * 100).round(2).to_string())
+
+# 2. Reimputar con KNN
+df_model_clean = pd.DataFrame(
+    KNNImputer(n_neighbors=5).fit_transform(df_model_clean),
+    columns=df_model_clean.columns,
+    index=df_model_clean.index
+)
+
+print("\nNulos después de KNN:")
+print((df_model_clean.isnull().mean() * 100).round(2).to_string())
+print(f"\nShape final: {df_model_clean.shape}")
+
+```
+
+
+
+>Output
+
+
+
+```text
+Nulos después de marcar outliers:
+pl_eqt       0.00
+pl_insol    11.41
+st_teff      6.22
+st_rad       4.16
+
+Nulos después de KNN:
+pl_eqt      0.0
+pl_insol    0.0
+st_teff     0.0
+st_rad      0.0
+
+Shape final: (4566, 4)
+```
+
+
+
+
+Perfecto, con esto ya tendriamos nuestros datos limpios para trabajar, ahora dividamos nuestros datos, probemos con 80% de los datos originales, esto para train y test.
+
+Para esto usaremos OLS regression para ver los datos mas explicitos y scikit-learn para las métricas predictivas y calculos de test. 
+
+Asi mismo despues de eso, grafiquemos los datos predichos vs los datos reales para ver la dispersion.
+
+
+
+
+
+>PythonCode
+
+
+
+```python
+import statsmodels.api as sm
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import numpy as np
+
+# ── Split ─────────────────────────────────────────────────────────────────────
+X = df_model_clean.drop(columns="pl_eqt")
+y = df_model_clean["pl_eqt"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# ── Statsmodels OLS ───────────────────────────────────────────────────────────
+X_train_sm = sm.add_constant(X_train)
+X_test_sm  = sm.add_constant(X_test)
+
+model_sm = sm.OLS(y_train, X_train_sm).fit()
+print(model_sm.summary())
+
+# ── Sklearn — métricas en test set ───────────────────────────────────────────
+y_pred = model_sm.predict(X_test_sm)
+
+r2   = r2_score(y_test, y_pred)
+mae  = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+
+print("\n" + "=" * 50)
+print("  MÉTRICAS EN TEST SET (datos no vistos)")
+print("=" * 50)
+print(f"  R²:   {r2:.4f}")
+print(f"  MAE:  {mae:.2f} K")
+print(f"  RMSE: {rmse:.2f} K")
+print(f"  Observaciones train: {len(X_train)}")
+print(f"  Observaciones test:  {len(X_test)}")
+
+
+# Graficar
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ── Predicciones ──────────────────────────────────────────────────────────────
+y_pred = model_sm.predict(X_test_sm)
+
+# ── Gráfica ───────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(9, 7))
+fig.patch.set_facecolor("#0b0e1a")
+ax.set_facecolor("#111628")
+
+# Scatter real vs predicho
+ax.scatter(y_test, y_pred, alpha=0.4, s=15, color="#4fd1c5", edgecolors="none", label="Planetas")
+
+# Línea perfecta (y = x)
+lims = [min(y_test.min(), y_pred.min()), max(y_test.max(), y_pred.max())]
+ax.plot(lims, lims, color="#fc8181", linewidth=1.5, linestyle="--", label="Predicción perfecta")
+
+# Línea de la Tierra
+ax.axvline(255, color="#68d391", linewidth=1, linestyle=":", alpha=0.8)
+ax.axhline(255, color="#68d391", linewidth=1, linestyle=":", alpha=0.8)
+ax.text(255 + 10, lims[0] + 50, "T⊕ = 255 K", color="#68d391", fontsize=8, fontfamily="monospace")
+
+# Estilo
+ax.set_xlabel("pl_eqt real (K)",      color="#a0aec0", fontsize=11)
+ax.set_ylabel("pl_eqt predicho (K)",  color="#a0aec0", fontsize=11)
+ax.set_title("Real vs Predicho — Regresión Lineal Múltiple",
+             color="#e2e8f0", fontsize=13, fontweight="bold", pad=15)
+ax.tick_params(colors="#a0aec0", labelsize=9)
+ax.spines[["top", "right"]].set_visible(False)
+ax.spines[["left", "bottom"]].set_color("#1e2540")
+ax.grid(color="#1e2540", linewidth=0.6)
+ax.legend(framealpha=0.2, labelcolor="#e2e8f0", fontsize=9, facecolor="#111628")
+
+# Anotación R²
+ax.text(0.05, 0.92, f"R² test = {r2:.4f}\nMAE = {mae:.1f} K\nRMSE = {rmse:.1f} K",
+        transform=ax.transAxes, color="#e2e8f0", fontsize=9,
+        fontfamily="monospace", verticalalignment="top",
+        bbox=dict(facecolor="#1e2540", alpha=0.6, edgecolor="none", pad=6))
+
+plt.tight_layout()
+plt.savefig("real_vs_predicho.png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+plt.show()
+
+```
+
+
+>Output
+
+
+
+
+```text
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 pl_eqt   R-squared:                       0.677
+Model:                            OLS   Adj. R-squared:                  0.676
+Method:                 Least Squares   F-statistic:                     2544.
+Date:                Thu, 19 Feb 2026   Prob (F-statistic):               0.00
+Time:                        08:21:19   Log-Likelihood:                -25527.
+No. Observations:                3652   AIC:                         5.106e+04
+Df Residuals:                    3648   BIC:                         5.109e+04
+Df Model:                           3                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const        319.1026     41.340      7.719      0.000     238.052     400.153
+pl_insol       1.4290      0.020     70.826      0.000       1.389       1.469
+st_teff        0.0184      0.010      1.899      0.058      -0.001       0.037
+st_rad       191.7200     20.721      9.252      0.000     151.094     232.346
+==============================================================================
+Omnibus:                     1798.743   Durbin-Watson:                   1.977
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            22644.448
+Skew:                           2.029   Prob(JB):                         0.00
+Kurtosis:                      14.504   Cond. No.                     5.39e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 5.39e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+==================================================
+  MÉTRICAS EN TEST SET (datos no vistos)
+==================================================
+  R²:   0.6680
+  MAE:  180.66 K
+  RMSE: 272.41 K
+  Observaciones train: 3652
+  Observaciones test:  914
+```
+
+
